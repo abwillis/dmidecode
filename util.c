@@ -37,6 +37,16 @@
 #endif /* !MAP_FAILED */
 #endif /* USE MMAP */
 
+#ifdef __OS2__
+#define INCL_DOS
+#define INCL_BASE
+#define INCL_DOSMISC
+#define INCL_DOSDEVICES
+#define INCL_DOSERRORS
+#include <os2.h>
+#include <bsedev.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -161,6 +171,80 @@ out:
  */
 void *mem_chunk(off_t base, size_t len, const char *devmem)
 {
+#ifdef __OS2__
+  void * Result = malloc(len);
+  HFILE   DevHandle        = NULLHANDLE;   /* Handle for device */
+
+  struct
+  {
+    ULONG Command;
+    ULONG Addr;
+    USHORT Numbytes;
+  } biosparms;
+
+  ULONG   ulParmLen        = 0;            /* Input and output parameter size */
+  ULONG   ulDataLen        = 0;            /* Input and output data size */
+  ULONG   ulAction         = 0;
+  APIRET  rc               = NO_ERROR;     /* Return code */
+  ULONG   position;
+  ULONG   chunk;
+
+
+  if (Result != NULL)
+  {
+    memset(Result, 0, len);
+
+    rc = DosOpen("TESTCFG$",
+                 &DevHandle,
+                 &ulAction,
+                 (ULONG)NULL,
+                 (ULONG)NULL,
+                 1,
+                 0x40,
+                 0);
+
+    if (rc != 0)
+    {
+      fprintf(stderr, "Unable to open TESTCFG$, rc=%d\n", rc);
+    }
+    else
+    {
+      position = 0;
+      while (position < len)
+      {
+        chunk = len - position;
+        if (chunk > 128)
+        {
+          chunk = 128;
+        }
+        biosparms.Command  = 0;
+        biosparms.Addr     = base + position;
+        biosparms.Numbytes = chunk;
+
+        ulParmLen = sizeof(biosparms);   /* Length of input parameters */
+        ulDataLen = chunk;
+
+        rc = DosDevIOCtl(DevHandle,           /* Handle to device */
+                         IOCTL_TESTCFG_SYS,   /* Category of request */
+                         TESTCFG_SYS_GETBIOSADAPTER, /* Function being requested */
+                         (void*)&biosparms,   /* Input/Output parameter list */
+                          ulParmLen,          /* Maximum output parameter size */
+                         &ulParmLen,          /* Input:  size of parameter list */
+                                              /* Output: size of parameters returned */
+                         ((BYTE *) Result) + position,  /* Input/Output data area */
+                          ulDataLen,          /* Maximum output data size */
+                         &ulDataLen);         /* Input:  size of input data area */
+                                              /* Output: size of data returned   */
+        position += chunk;
+      }
+      DosClose(DevHandle);
+    }
+  }
+
+  return Result;
+
+#else /* not OS/2 */
+
 	void *p;
 	int fd;
 #ifdef USE_MMAP
@@ -245,6 +329,7 @@ out:
 		perror(devmem);
 
 	return p;
+#endif /* not OS/2 */
 }
 
 int write_dump(size_t base, size_t len, const void *data, const char *dumpfile, int add)

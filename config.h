@@ -17,7 +17,7 @@
 #endif
 
 /* Use mmap or not */
-#ifndef __BEOS__
+#if !defined(__BEOS__) && !defined(__OS2__)
 #define USE_MMAP
 #endif
 
