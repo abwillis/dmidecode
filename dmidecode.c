@@ -5022,8 +5022,13 @@ int main(int argc, char * const argv[])
 	 * We don't want stdout and stderr to be mixed up if both are
 	 * redirected to the same file.
 	 */
-	setlinebuf(stdout);
+#ifdef __OS2__
+    setvbuf(stdout,(char *)NULL, _IOLBF, 0);
+    setvbuf(stderr,(char *)NULL, _IOLBF, 0);
+#else
+    setlinebuf(stdout);
 	setlinebuf(stderr);
+#endif
 
 	if (sizeof(u8) != 1 || sizeof(u16) != 2 || sizeof(u32) != 4 || '\0' != 0)
 	{
