@@ -27,7 +27,7 @@ CFLAGS += -O2
 #CFLAGS += -g
 
 # Pass linker flags here
-LDFLAGS =
+LDFLAGS =  -Zomf -Zexe -Zhigh-mem
 
 DESTDIR =
 prefix  = /usr/local
@@ -46,14 +46,14 @@ RM              := rm -f
 MACHINE ?= $(shell uname -m 2>/dev/null)
 
 # These programs are only useful on x86
-PROGRAMS-i386 := biosdecode ownership vpddecode
+PROGRAMS-i386 := biosdecode.exe ownership.exe vpddecode.exe
 PROGRAMS-i486 := $(PROGRAMS-i386)
 PROGRAMS-i586 := $(PROGRAMS-i386)
 PROGRAMS-i686 := $(PROGRAMS-i386)
 PROGRAMS-x86_64 := biosdecode ownership vpddecode
 PROGRAMS-amd64 := $(PROGRAMS-x86_64)
 
-PROGRAMS := dmidecode $(PROGRAMS-$(MACHINE))
+PROGRAMS := dmidecode.exe $(PROGRAMS-$(MACHINE))
 
 all : $(PROGRAMS)
 
@@ -61,17 +61,17 @@ all : $(PROGRAMS)
 # Programs
 #
 
-dmidecode : dmidecode.o dmiopt.o dmioem.o util.o
-	$(CC) $(LDFLAGS) dmidecode.o dmiopt.o dmioem.o util.o -o $@
+dmidecode.exe : dmidecode.o dmiopt.o dmioem.o util.o getopt.o getopt1.o
+	$(CC) $(LDFLAGS) dmidecode.o dmiopt.o dmioem.o util.o getopt.o getopt1.o -o $@
 
-biosdecode : biosdecode.o util.o
-	$(CC) $(LDFLAGS) biosdecode.o util.o -o $@
+biosdecode.exe : biosdecode.o util.o getopt.o getopt1.o
+	$(CC) $(LDFLAGS) biosdecode.o util.o getopt.o getopt1.o -o $@
 
-ownership : ownership.o util.o
-	$(CC) $(LDFLAGS) ownership.o util.o -o $@
+ownership.exe : ownership.o util.o getopt.o getopt1.o
+	$(CC) $(LDFLAGS) ownership.o util.o getopt.o getopt1.o -o $@
 
-vpddecode : vpddecode.o vpdopt.o util.o
-	$(CC) $(LDFLAGS) vpddecode.o vpdopt.o util.o -o $@
+vpddecode.exe : vpddecode.o vpdopt.o util.o getopt.o getopt1.o
+	$(CC) $(LDFLAGS) vpddecode.o vpdopt.o util.o getopt.o getopt1.o -o $@
 
 #
 # Objects
@@ -99,8 +99,14 @@ vpddecode.o : vpddecode.c version.h types.h util.h config.h vpdopt.h
 vpdopt.o : vpdopt.c config.h util.h vpdopt.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-util.o : util.c types.h util.h config.h
+getopt.o : getopt.c getopt.h
 	$(CC) $(CFLAGS) -c $< -o $@
+
+getopt1.o : getopt1.c getopt.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+util.o : util.c types.h util.h config.h
+	$(CC) $(CFLAGS) -I/usr/include -Ie:/os2tk45/h -c $< -o $@
 
 #
 # Commands

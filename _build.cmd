@@ -4,7 +4,7 @@ diff -u util.c.org util.c > util.c.diff
 SET WATCOM=E:\compilers\WATCOM
 
 set ENDLIBPATH=%ENDLIBPATH%;%WATCOM%\BINP\DLL
-set path=%path%;%WATCOM%\BINP;%WATCOM%\BINW
+set path=%path%;%WATCOM%\BINP;%WATCOM%\BINW;e:\os2tk45\bin
 set help=%help%;%WATCOM%\BINP\HELP
 set bookshelf=%bookshelf%;%WATCOM%\BINP\HELP
 SET INCLUDE=%WATCOM%\H\OS2;%WATCOM%\H;.
