@@ -27,7 +27,7 @@ CFLAGS += -O2
 #CFLAGS += -g
 
 # Pass linker flags here
-LDFLAGS =  -Zomf -Zexe -Zhigh-mem
+LDFLAGS =  -Zomf -Zhigh-mem
 
 DESTDIR =
 prefix  = /usr/local
