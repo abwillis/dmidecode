@@ -2507,6 +2507,79 @@ static void dmi_memory_device_speed(u16 code)
 		printf(" %u MT/s", code);
 }
 
+static void dmi_memory_technology(u8 code)
+{
+	/* 7.18.6 */
+	static const char * const technology[] = {
+		"Other", /* 0x01 */
+		"Unknown",
+		"DRAM",
+		"NVDIMM-N",
+		"NVDIMM-F",
+		"NVDIMM-P",
+		"Intel persistent memory" /* 0x07 */
+	};
+	if (code >= 0x01 && code <= 0x07)
+		printf(" %s", technology[code - 0x01]);
+	else
+		printf(" %s", out_of_spec);
+}
+
+static void dmi_memory_operating_mode_capability(u16 code)
+{
+	/* 7.18.7 */
+	static const char * const mode[] = {
+		"Other", /* 1 */
+		"Unknown",
+		"Volatile memory",
+		"Byte-accessible persistent memory",
+		"Block-accessible persistent memory" /* 5 */
+	};
+
+	if ((code & 0xFFFE) == 0)
+		printf(" None");
+	else {
+		int i;
+
+		for (i = 1; i <= 5; i++)
+			if (code & (1 << i))
+				printf(" %s", mode[i - 1]);
+	}
+}
+
+static void dmi_memory_manufacturer_id(u16 code)
+{
+	/* 7.18.8 */
+	/* 7.18.10 */
+	/* LSB is 7-bit Odd Parity number of continuation codes */
+	if (code == 0)
+		printf(" Unknown");
+	else
+		printf(" Bank %d, Hex 0x%02X", (code & 0x7F) + 1, code >> 8);
+}
+
+static void dmi_memory_product_id(u16 code)
+{
+	/* 7.18.9 */
+	/* 7.18.11 */
+	if (code == 0)
+		printf(" Unknown");
+	else
+		printf(" 0x%04X", code);
+}
+
+static void dmi_memory_size(u64 code)
+{
+	/* 7.18.12 */
+	/* 7.18.13 */
+	if (code.h == 0xFFFFFFFF && code.l == 0xFFFFFFFF)
+		printf(" Unknown");
+	else if (code.h == 0x0 && code.l == 0x0)
+		printf(" None");
+	else
+		dmi_print_memory_size(code, 0);
+}
+
 /*
  * 7.19 32-bit Memory Error Information (Type 18)
  */
@@ -3907,6 +3980,43 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 			printf("\tConfigured Voltage:");
 			dmi_memory_voltage_value(WORD(data + 0x26));
 			printf("\n");
+			if (h->length < 0x34) break;
+			printf("\tMemory Technology:");
+			dmi_memory_technology(data[0x28]);
+			printf("\n");
+			printf("\tMemory Operating Mode Capability:");
+			dmi_memory_operating_mode_capability(WORD(data + 0x29));
+			printf("\n");
+			printf("\tFirmware Version: %s\n",
+				dmi_string(h, data[0x2B]));
+			printf("\tModule Manufacturer ID:");
+			dmi_memory_manufacturer_id(WORD(data + 0x2C));
+			printf("\n");
+			printf("\tModule Product ID:");
+			dmi_memory_product_id(WORD(data + 0x2E));
+			printf("\n");
+			printf("\tMemory Subsystem Controller Manufacturer ID:");
+			dmi_memory_manufacturer_id(WORD(data + 0x30));
+			printf("\n");
+			printf("\tMemory Subsystem Controller Product ID:");
+			dmi_memory_product_id(WORD(data + 0x32));
+			printf("\n");
+			if (h->length < 0x3C) break;
+			printf("\tNon-Volatile Size:");
+			dmi_memory_size(QWORD(data + 0x34));
+			printf("\n");
+			if (h->length < 0x44) break;
+			printf("\tVolatile Size:");
+			dmi_memory_size(QWORD(data + 0x3C));
+			printf("\n");
+			if (h->length < 0x4C) break;
+			printf("\tCache Size:");
+			dmi_memory_size(QWORD(data + 0x44));
+			printf("\n");
+			if (h->length < 0x54) break;
+			printf("\tLogical Size:");
+			dmi_memory_size(QWORD(data + 0x4C));
+			printf("\n");
 			break;
 
 		case 18: /* 7.19 32-bit Memory Error Information */
@@ -4622,6 +4732,7 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 
 		to_dmi_header(&h, data);
 		display = ((opt.type == NULL || opt.type[h.type])
+			&& (opt.handle == ~0U || opt.handle == h.handle)
 			&& !((opt.flags & FLAG_QUIET) && (h.type == 126 || h.type == 127))
 			&& !opt.string);
 
@@ -5039,6 +5150,7 @@ int main(int argc, char * const argv[])
 	/* Set default option values */
 	opt.devmem = DEFAULT_MEM_DEV;
 	opt.flags = 0;
+	opt.handle = ~0U;
 
 	if (parse_command_line(argc, argv)<0)
 	{
