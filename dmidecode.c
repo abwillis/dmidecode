@@ -65,6 +65,10 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifdef __OS2__
+#define	AF_INET		2		/* internetwork: UDP, TCP, etc. */
+#define AF_INET6        24
+#endif
 #include <arpa/inet.h>
 
 #ifdef __FreeBSD__
