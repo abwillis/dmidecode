@@ -13,8 +13,9 @@ SET EDPATH=%WATCOM%\EDDAT
 for %%d in (*.err *.obj *.exe ..\*.exe) do if exist %%d del %%d
 
 if not exist output mkdir output
-
-wcl386 -q -fe=output\dmidecode.exe  dmidecode.c dmiopt.c dmioem.c util.c getopt.c getopt1.c
+@echo on
+wcl386 -q -fe=output\dmidecode.exe dmidecode.c dmiopt.c dmioem.c dmioutput.c util.c getopt.c getopt1.c
+@echo off
 if not exist  output\dmidecode.exe goto :error
 
 wcl386 -q -fe=output\biosdecode.exe biosdecode.c                  util.c getopt.c getopt1.c
@@ -28,7 +29,7 @@ if not exist  output\vpddecode.exe goto :error
 
 call lxlite output\*.exe
 
-for %%d in (*.err *.obj) do if exist %%d del %%d
+rem for %%d in (*.err *.obj) do if exist %%d del %%d
 goto :end
 
 :error
