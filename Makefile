@@ -4,7 +4,7 @@
 #   VPD Decode
 #
 #   Copyright (C) 2000-2002 Alan Cox <alan@redhat.com>
-#   Copyright (C) 2002-2015 Jean Delvare <jdelvare@suse.de>
+#   Copyright (C) 2002-2020 Jean Delvare <jdelvare@suse.de>
 #
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -12,8 +12,13 @@
 #   (at your option) any later version.
 #
 
-CC      = gcc
-CFLAGS  = -W -Wall -Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-qual \
+CC     ?= gcc
+# Base CFLAGS can be overridden by environment
+CFLAGS ?= -O2
+# When debugging, disable -O2 and enable -g
+#CFLAGS ?= -g
+
+CFLAGS += -W -Wall -Wshadow -Wstrict-prototypes -Wpointer-arith -Wcast-qual \
           -Wcast-align -Wwrite-strings -Wmissing-prototypes -Winline -Wundef
 
 # Let lseek and mmap support 64-bit wide offsets
@@ -61,8 +66,8 @@ all : $(PROGRAMS)
 # Programs
 #
 
-dmidecode.exe : dmidecode.o dmiopt.o dmioem.o util.o getopt.o getopt1.o
-	$(CC) $(LDFLAGS) dmidecode.o dmiopt.o dmioem.o util.o getopt.o getopt1.o -o $@
+dmidecode.exe : dmidecode.o dmiopt.o dmioem.o dmioutput.o util.o getopt.o getopt1.o
+	$(CC) $(LDFLAGS) dmidecode.o dmiopt.o dmioem.o dmioutput.o util.o getopt.o getopt1.o -o $@
 
 biosdecode.exe : biosdecode.o util.o getopt.o getopt1.o
 	$(CC) $(LDFLAGS) biosdecode.o util.o getopt.o getopt1.o -o $@
@@ -78,16 +83,19 @@ vpddecode.exe : vpddecode.o vpdopt.o util.o getopt.o getopt1.o
 #
 
 dmidecode.o : dmidecode.c version.h types.h util.h config.h dmidecode.h \
-	      dmiopt.h dmioem.h
+	      dmiopt.h dmioem.h dmioutput.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 dmiopt.o : dmiopt.c config.h types.h util.h dmidecode.h dmiopt.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-dmioem.o : dmioem.c types.h dmidecode.h dmioem.h
+dmioem.o : dmioem.c types.h dmidecode.h dmioem.h dmioutput.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-biosdecode.o : biosdecode.c version.h types.h util.h config.h 
+dmioutput.o : dmioutput.c types.h dmioutput.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+biosdecode.o : biosdecode.c version.h types.h util.h config.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ownership.o : ownership.c version.h types.h util.h config.h
