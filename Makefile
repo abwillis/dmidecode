@@ -48,7 +48,7 @@ INSTALL_PROGRAM := $(INSTALL) -m 755
 RM              := rm -f
 
 # BSD make provides $MACHINE, but GNU make doesn't
-MACHINE ?= $(shell uname -m 2>/dev/null)
+MACHINE ?= $(shell uname -m 2>null)
 
 # These programs are only useful on x86
 PROGRAMS-i386 := biosdecode.exe ownership.exe vpddecode.exe
