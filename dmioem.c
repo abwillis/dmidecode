@@ -283,7 +283,7 @@ static void dmi_hp_203_devloc(const char *fname, unsigned int code)
 		"Rear USB Port",
 		"Internal USB",
 		"Internal SD Card",
-		"Internal Virutal USB (Embedded NAND)",
+		"Internal Virtual USB (Embedded NAND)",
 		"Embedded SATA Port",
 		"Embedded Smart Array",
 		"PCI Slot",
@@ -298,6 +298,159 @@ static void dmi_hp_203_devloc(const char *fname, unsigned int code)
 		str = location[code];
 
 	pr_attr(fname, "%s", str);
+}
+
+static void dmi_hp_216_fw_type(u16 code)
+{
+	const char *str = "Reserved";
+	static const char * const type[] = {
+		"Reserved", /* 0x00 */
+		"System ROM",
+		"Redundant System ROM",
+		"System ROM Bootblock",
+		"Power Management Controller Firmware",
+		"Power Management Controller Firmware Bootloader",
+		"SL Chassis Firmware",
+		"SL Chassis Firmware Bootloader",
+		"Hardware PAL/CPLD",
+		"SPS Firmware (ME Firmware)",
+		"SL Chassis PAL/CPLD",
+		"Compatibility Support Module (CSM)",
+		"APML",
+		"Smart Storage Battery (Megacell) Firmware",
+		"Trusted Module (TPM or TCM) Firmware Version",
+		"NVMe Backplane Firmware",
+		"Intelligent Provisioning",
+		"SPI Descriptor Version",
+		"Innovation Engine Firmware (IE Firmware)",
+		"UMB Backplane Firmware",
+		"Reserved", /* 0x14 */
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved", /* 0x1F */
+		"EL Chassis Abstraction Revision",
+		"EL Chassis Firmware Revision",
+		"EL Chassis PAL/CPLD",
+		"EL Cartride Abstraction Revision",
+		"Reserved", /* 0x24 */
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved",
+		"Reserved", /* 0x2F */
+		"Embedded Video Controller",
+		"PCIe Riser Programmable Logic Device",
+		"PCIe cards that contain a CPLD",
+		"Intel NVMe VROC",
+		"Intel SATA VROC",
+		"Intel SPS Firmware",
+		"Secondary System Programmable Logic Device",
+		"CPU MEZZ Programmable Logic Device", /* 0x37 */
+		"Intel Artic Sound -M Accelerator Models Firmware",
+		"Ampere System Control Processor (SCP – PMPro+SMPro)",
+		"Intel CFR information", /* 0x3A */
+	};
+
+	if (code < ARRAY_SIZE(type))
+		str = type[code];
+
+	pr_attr("Firmware Type", "%s", str);
+}
+
+static void dmi_hp_216_version(u8 format, u8 *data)
+{
+	const char * const name = "Version Data";
+	const char * const reserved = "Reserved";
+	int gen;
+
+	gen = dmi_hpegen(dmi_product);
+
+	switch (format) {
+	case 0:
+		pr_attr(name, "No Version Data");
+		break;
+	case 1:
+		pr_attr(name, "%c.%d.%d", data[0] & (1 << 7) ? 'B' : 'R',
+					  data[0] & 0x7, data[1] & 0x7);
+		break;
+	case 2:
+		pr_attr(name, "%d.%d", data[0] >> 4, data[0] & 0x0f);
+		break;
+	case 4:
+		pr_attr(name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
+		break;
+	case 5:
+		if (gen == G9) {
+			pr_attr(name, "%d.%d.%d", data[0] >> 4, data[0] & 0x0f, data[1] & 0x7f);
+		} else if (gen == G10 || gen == G10P) {
+			pr_attr(name, "%d.%d.%d.%d", data[1] & 0x0f, data[3] & 0x0f,
+						     data[5] & 0x0f, data[6] & 0x0f);
+		} else {
+			pr_attr(name, "%s", reserved);
+		}
+		break;
+	case 6:
+		pr_attr(name, "%d.%d", data[1], data[0]);
+		break;
+	case 7:
+		pr_attr(name, "v%d.%.2d (%.2d/%.2d/%d)", data[0], data[1],
+							 data[2], data[3], WORD(data + 4));
+		break;
+	case 8:
+		pr_attr(name, "%d.%d", WORD(data + 4), WORD(data));
+		break;
+	case 9:
+		pr_attr(name, "%d.%d.%d", data[0], data[1], WORD(data + 2));
+		break;
+	case 10:
+		pr_attr(name, "%d.%d.%d Build %d", data[0], data[1], data[2], data[3]);
+		break;
+	case 11:
+		pr_attr(name, "%d.%d %d", WORD(data + 2), WORD(data), DWORD(data + 4));
+		break;
+	case 12:
+		pr_attr(name, "%d.%d.%d.%d", WORD(data), WORD(data + 2),
+					     WORD(data + 4), WORD(data + 6));
+		break;
+	case 13:
+		pr_attr(name, "%d", data[0]);
+		break;
+	case 14:
+		pr_attr(name, "%d.%d.%d.%d", data[0], data[1], data[2], data[3]);
+		break;
+	case 15:
+		pr_attr(name, "%d.%d.%d.%d (%.2d/%.2d/%d)",
+				WORD(data), WORD(data + 2), WORD(data + 4), WORD(data + 6),
+				data[8], data[9], WORD(data + 10));
+		break;
+	case 16:
+		pr_attr(name, "%c%c%c%c.%d%d",
+				data[0], data[1], data[2], data[3], data[4], data[5]);
+		break;
+	case 17:
+		pr_attr(name, "%08X", DWORD(data));
+		break;
+	case 18:
+		pr_attr(name, "%d.%2d", data[0], data[1]);
+		break;
+	case 3: /* fall through */
+	default:
+		pr_attr(name, "%s", reserved);
+	}
 }
 
 static int dmi_hp_224_status(u8 code)
@@ -741,6 +894,51 @@ static int dmi_decode_hp(const struct dmi_header *h)
 					paddr.h, paddr.l);
 				pr_attr("Length", "0x%08x", DWORD(data + 0x10));
 			}
+			break;
+
+		case 216:
+			/*
+			 * Vendor Specific: Version Indicator Record
+			 *
+			 * This record is used to allow determining Firmware and CPLD revisions for
+			 * components in the system. The goal of this record is to provide a
+			 * flexible method to communicate to software and firmware the revisions
+			 * of these components. This record replaces much of the functionality of
+			 * Record Type 193. OEM SMBIOS Record Type 193 was not scaling well with
+			 * the large number of potential CPLD devices, power management controllers,
+			 * etc. This record is flexible such that each instance of Type 216
+			 * defines one firmware component. This record also includes the string
+			 * name for which software should refer to the component. The record
+			 * includes both data bytes to indicate the revision and a string value. A
+			 * firmware component can implement either or both. If both are supported,
+			 * it allows easy display of the revision, but prevents the need for
+			 * software/firmware to parse strings when doing comparisons on revisions.
+			 * As there is one Type 216 Record per firmware component, the Handle for
+			 * the Record can be used to tie firmware components with other OEM SMBIOS
+			 * Records in the future if needed (similar to how SMBIOS Type 17 is tied
+			 * to other Record Types related to DIMMs)
+			 *
+			 * Offset |  Name      | Width  | Description
+			 * ------------------------------------------
+			 *  0x00  | Type       |  BYTE  | 0xD8, Version Indicator Record
+			 *  0x01  | Length     |  BYTE  | Length of structure
+			 *  0x02  | Handle     |  WORD  | Unique handle
+			 *  0x04  | FW Type    |  WORD  | Type of Firmware
+			 *  0x06  | FW Name    | STRING | Name of Firmware
+			 *  0x07  | FW Version | STRING | Firmware Version
+			 *  0x08  | Data Format|  BYTE  | Format of the Version Data
+			 *  0x09  |Version Data|12 BYTES| Version Data in Format from field 0x08
+			 *  0x15  | Unique ID  |  WORD  | Unique ID for Firmware flash
+			 */
+			if (gen < G8) return 0;
+			pr_handle_name("%s Version Indicator", company);
+			if (h->length < 23) break;
+			dmi_hp_216_fw_type(WORD(data + 0x04));
+			pr_attr("Firmware Name String", "%s", dmi_string(h, data[0x06]));
+			pr_attr("Firmware Version String", "%s", dmi_string(h, data[0x07]));
+			dmi_hp_216_version(data[0x08], data + 0x09);
+			if (WORD(data + 0x15))
+				pr_attr("Unique ID", "0x%04x", WORD(data + 0x15));
 			break;
 
 		case 219:

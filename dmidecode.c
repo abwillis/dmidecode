@@ -1109,24 +1109,6 @@ static enum cpuid_type dmi_get_cpuid_type(const struct dmi_header *h)
 	      || (type >= 0xB6 && type <= 0xB7) /* AMD */
 	      || (type >= 0xE4 && type <= 0xEF)) /* AMD */
 		return cpuid_x86_amd;
-	else if (type == 0x01 || type == 0x02)
-	{
-		const char *version = dmi_string(h, data[0x10]);
-		/*
-		 * Some X86-class CPU have family "Other" or "Unknown". In this case,
-		 * we use the version string to determine if they are known to
-		 * support the CPUID instruction.
-		 */
-		if (strncmp(version, "Pentium III MMX", 15) == 0
-		 || strncmp(version, "Intel(R) Core(TM)2", 18) == 0
-		 || strncmp(version, "Intel(R) Pentium(R)", 19) == 0
-		 || strcmp(version, "Genuine Intel(R) CPU U1400") == 0)
-			return cpuid_x86_intel;
-		else if (strncmp(version, "AMD Athlon(TM)", 14) == 0
-		      || strncmp(version, "AMD Opteron(tm)", 15) == 0
-		      || strncmp(version, "Dual-Core AMD Opteron(tm)", 25) == 0)
-			return cpuid_x86_amd;
-	}
 
 	/* neither X86 nor ARM */
 	return cpuid_none;
@@ -2726,7 +2708,7 @@ static void dmi_memory_device_width(const char *attr, u16 code)
 	/*
 	 * If no memory module is present, width may be 0
 	 */
-	if (code == 0xFFFF || code == 0)
+	if (code == 0xFFFF || (code == 0 && !(opt.flags & FLAG_NO_QUIRKS)))
 		pr_attr(attr, "Unknown");
 	else
 		pr_attr(attr, "%u bits", code);
@@ -4724,7 +4706,7 @@ static void dmi_decode(const struct dmi_header *h, u16 ver)
 			dmi_memory_device_type_detail(WORD(data + 0x13));
 			if (h->length < 0x17) break;
 			/* If no module is present, the remaining fields are irrelevant */
-			if (WORD(data + 0x0C) == 0)
+			if (WORD(data + 0x0C) == 0 && !(opt.flags & FLAG_NO_QUIRKS))
 				break;
 			dmi_memory_device_speed("Speed", WORD(data + 0x15),
 						h->length >= 0x5C ?
@@ -5548,7 +5530,7 @@ static void dmi_table_decode(u8 *buf, u32 len, u16 num, u16 ver, u32 flags)
 		}
 
 		/* Fixup a common mistake */
-		if (h.type == 34)
+		if (h.type == 34 && !(opt.flags & FLAG_NO_QUIRKS))
 			dmi_fixup_type_34(&h, display);
 
 		if (display)
@@ -5704,7 +5686,8 @@ static int smbios3_decode(u8 *buf, const char *devmem, u32 flags)
 		return 0;
 	}
 
-	if (!checksum(buf, buf[0x06]))
+	if (buf[0x06] < 0x18
+	 || !checksum(buf, buf[0x06]))
 		return 0;
 
 	ver = (buf[0x07] << 16) + (buf[0x08] << 8) + buf[0x09];
@@ -5738,6 +5721,29 @@ static int smbios3_decode(u8 *buf, const char *devmem, u32 flags)
 	return 1;
 }
 
+static void dmi_fixup_version(u16 *ver)
+{
+	/* Some BIOS report weird SMBIOS version, fix that up */
+	switch (*ver)
+	{
+		case 0x021F:
+		case 0x0221:
+			if (!(opt.flags & FLAG_QUIET))
+				fprintf(stderr,
+					"SMBIOS version fixup (2.%d -> 2.%d).\n",
+					*ver & 0xFF, 3);
+			*ver = 0x0203;
+			break;
+		case 0x0233:
+			if (!(opt.flags & FLAG_QUIET))
+				fprintf(stderr,
+					"SMBIOS version fixup (2.%d -> 2.%d).\n",
+					51, 6);
+			*ver = 0x0206;
+			break;
+	}
+}
+
 static int smbios_decode(u8 *buf, const char *devmem, u32 flags)
 {
 	u16 ver;
@@ -5751,31 +5757,19 @@ static int smbios_decode(u8 *buf, const char *devmem, u32 flags)
 		return 0;
 	}
 
-	if (!checksum(buf, buf[0x05])
+	/*
+	 * The size of this structure is 0x1F bytes, but we also accept value
+	 * 0x1E due to a mistake in SMBIOS specification version 2.1.
+	 */
+	if (buf[0x05] < 0x1E
+	 || !checksum(buf, buf[0x05])
 	 || memcmp(buf + 0x10, "_DMI_", 5) != 0
 	 || !checksum(buf + 0x10, 0x0F))
 		return 0;
 
 	ver = (buf[0x06] << 8) + buf[0x07];
-	/* Some BIOS report weird SMBIOS version, fix that up */
-	switch (ver)
-	{
-		case 0x021F:
-		case 0x0221:
-			if (!(opt.flags & FLAG_QUIET))
-				fprintf(stderr,
-					"SMBIOS version fixup (2.%d -> 2.%d).\n",
-					ver & 0xFF, 3);
-			ver = 0x0203;
-			break;
-		case 0x0233:
-			if (!(opt.flags & FLAG_QUIET))
-				fprintf(stderr,
-					"SMBIOS version fixup (2.%d -> 2.%d).\n",
-					51, 6);
-			ver = 0x0206;
-			break;
-	}
+	if (!(opt.flags & FLAG_NO_QUIRKS))
+		dmi_fixup_version(&ver);
 	if (!(opt.flags & FLAG_QUIET))
 		pr_info("SMBIOS %u.%u present.",
 			ver >> 8, ver & 0xFF);
